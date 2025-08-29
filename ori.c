@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,28 +14,54 @@
 
 #define MAX 512
 
-// TODO: make notes fold, unfold with `o`
-// TODO: make notes scrollable
-// TODO: figure out utf-8, we can't use cool tree unicode.
-// TODO: make all strings in the program dynamic, consider using external
-// library if 2 much work.
+#define VERTICAL "│"   // U+2502
+#define HORIZONTAL "─" // U+2500
+#define BRANCH "├"     // U+251C
+#define LEAF "└"       // U+2514
 
-void tb_puts(int x, int y, uintattr_t fg, uintattr_t bg, const char *str) {
-  for (int i = 0; str[i]; i++)
-    tb_printf(x + i, y, fg, bg, "%c", str[i]);
+// TODO: make notes scrollable
+// TODO: make all strings in the program dynamic, consider using external library if 2 much work.
+
+static int utf8_decode(const char *s, uint32_t *rune) {
+    unsigned char c = s[0];
+
+    if (c < 0x80) { *rune = c; return 1; }
+    else if ((c & 0xE0) == 0xC0) { *rune = ((c & 0x1F) << 6) | (s[1] & 0x3F); return 2; }
+    else if ((c & 0xF0) == 0xE0) { *rune = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F); return 3; }
+    else if ((c & 0xF8) == 0xF0) { *rune = ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) | ((s[2] & 0x3F) << 6) | (s[3] & 0x3F); return 4; }
+
+    return 1;
+
 }
 
-void clean_str(char *str) {
-  if (!str)
-    return;
+void tb_puts(int x, int y, uint16_t fg, uint16_t bg, const char *str) {
+  int cx = x;
 
-  size_t len = strlen(str);
-  while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' ||
-                     str[len - 1] == ' ' || str[len - 1] == '\t')) {
-    str[--len] = '\0';
+  for (int i = 0; str[i];) {
+    uint32_t rune;
+    int bytes = utf8_decode(str + i, &rune);
+    tb_set_cell(cx, y, rune, fg, bg);
+    cx++;
+    i += bytes;
   }
 }
 
+void clean_str(char *str) {
+    if (!str) return;
+    size_t len = strlen(str);
+
+    size_t start = 0;
+    while (start < len && (str[start] == ' ' || str[start] == '\t'))
+        start++;
+
+    if (start > 0)
+        memmove(str, str + start, len - start + 1);
+
+    while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' ||
+                       str[len - 1] == ' ' || str[len - 1] == '\t')) {
+        str[--len] = '\0';
+    }
+}
 char *read_file(FILE *fp) {
   if (!fp)
     return NULL;
@@ -62,41 +89,68 @@ char *read_file(FILE *fp) {
 }
 
 int display_topic(char ***topics, int *counts, char **names, int n_topics) {
-    int selected = 0;
-    struct tb_event ev;
+  int selected = 0;
 
-    while (1) {
-        tb_clear();
-        int row = 1;
+  int *folded = calloc(n_topics, sizeof(int));
+  if (!folded)
+    return -1;
 
-        for (int t = 0; t < n_topics; t++) {
-            uint16_t fg = (t == selected) ? TB_BLACK : TB_WHITE | TB_BOLD;
-            uint16_t bg = (t == selected) ? TB_WHITE : TB_DEFAULT;
-            tb_puts(2, row, fg, bg, names[t]);
+  memset(folded, 1, n_topics * sizeof(int));
 
-            char buf[32];
-            snprintf(buf, sizeof(buf), " [%d]", counts[t]);
-            tb_puts(2 + strlen(names[t]), row, TB_CYAN, bg, buf);
+  struct tb_event ev;
+  while (1) {
+    tb_clear();
 
-            row++;
+    int row = 1;
+    int indent = 2;
+
+    for (int t = 0; t < n_topics; t++) {
+      uint16_t fg = (t == selected) ? TB_BLACK : TB_WHITE;
+      uint16_t bg = (t == selected) ? TB_WHITE : TB_DEFAULT;
+
+      tb_puts(indent, row, fg | TB_BOLD, bg, names[t]);
+
+      char buf[MAX];
+      snprintf(buf, sizeof(buf), " %d", counts[t]);
+      tb_puts(indent + strlen(names[t]), row, fg, bg, buf);
+
+      row++;
+
+      if (!folded[t]) {
+        for (int i = 0; i < counts[t]; i++) {
+          const char *prefix = (i == counts[t] - 1) ? LEAF : BRANCH;
+
+          clean_str(topics[t][i]);
+
+          tb_puts(indent, row, TB_WHITE | TB_BOLD, TB_DEFAULT, prefix);
+          tb_puts(indent + 2, row++, TB_WHITE, TB_DEFAULT, topics[t][i]);
         }
-
-        tb_present();
-
-        if (tb_poll_event(&ev) == -1) continue;
-        if (ev.type == TB_EVENT_KEY) {
-            if (ev.key == TB_KEY_ESC || ev.key == TB_KEY_CTRL_C) break;
-            if (ev.key == TB_KEY_ARROW_UP) {
-                if (selected > 0) selected--;
-            } else if (ev.key == TB_KEY_ARROW_DOWN) {
-                if (selected < n_topics - 1) selected++;
-            } else if (ev.key == TB_KEY_ENTER) {
-                return selected;
-            }
-        }
+      }
     }
 
-    return -1;  
+    tb_present();
+
+    if (tb_poll_event(&ev) == -1)
+      continue;
+
+    if (ev.type == TB_EVENT_KEY) {
+      if (ev.key == TB_KEY_ESC || ev.key == TB_KEY_CTRL_C)
+        break;
+
+      else if (ev.key == TB_KEY_ARROW_UP) {
+        if (selected > 0)
+          selected--;
+      } else if (ev.key == TB_KEY_ARROW_DOWN) {
+        if (selected < n_topics - 1)
+          selected++;
+      } else if (ev.key == TB_KEY_ENTER || ev.ch == ' ' || ev.ch == 'o') {
+        folded[selected] = !folded[selected];
+      }
+    }
+  }
+
+  free(folded);
+  return 0;
 }
 
 int read_entries(const char *topic_name, int entries, const char *dir_path,
@@ -185,6 +239,8 @@ int read_index(FILE *fp, const char *dir_path, char ***out_topic_names,
 }
 
 int main(int argc, char *argv[]) {
+  setlocale(LC_ALL, "C.UTF-8");
+
   if (argc < 2) {
     fprintf(stderr, "usage: %s <index_file>\n", argv[0]);
     return -1;
