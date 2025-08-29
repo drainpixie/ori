@@ -1,4 +1,4 @@
-CFLAGS += -std=c99 -Wall -Wextra -Werror -Wold-style-declaration -Wno-maybe-uninitialized -O3 -pedantic
+CFLAGS += -std=c99 -Wall -Wextra -Werror -Wold-style-declaration -Wno-maybe-uninitialized -Wno-unused-result -O3 -pedantic
 PREFIX  ?= /usr
 BINDIR  ?= $(PREFIX)/bin
 MANDIR  ?= $(PREFIX)/share/man
