@@ -111,7 +111,10 @@ void get_input(const char *prompt, char *buffer, int bufsize) {
                 buffer[pos] = '\0';
                 break;
             } else if (ev.key == TB_KEY_BACKSPACE || ev.key == TB_KEY_BACKSPACE2) {
-                if (pos > 0) pos--;
+                if (pos > 0) {
+					pos--;
+					buffer[pos] = '\0';
+				}
             } else if (ev.ch && pos < bufsize - 1) {
                 buffer[pos++] = (char)ev.ch;
             }
