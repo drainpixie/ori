@@ -1,3 +1,5 @@
+// vim: set wrap:
+
 #define TB_IMPL
 #include "termbox2.h"
 
@@ -10,6 +12,11 @@
 #include <sys/stat.h>
 
 #define MAX 512
+
+// TODO: make notes fold, unfold with `o`
+// TODO: make notes scrollable
+// TODO: figure out utf-8, we can't use cool tree unicode.
+// TODO: make all strings in the program dynamic, consider using external library if 2 much work.
 
 void tb_puts(int x, int y, uintattr_t fg, uintattr_t bg, const char *str) {
   for (int i = 0; str[i]; i++)
@@ -58,10 +65,20 @@ int display_topic(char ***topics, int *counts, char **names, int n_topics) {
   int row = 1;
 
   for (int t = 0; t < n_topics; t++) {
-    tb_puts(2, row++, TB_WHITE | TB_BOLD, TB_DEFAULT, names[t]);
-    row++;
-    for (int i = 0; i < counts[t]; i++)
-      tb_puts(4, row++, TB_CYAN, TB_DEFAULT, topics[t][i]);
+    tb_puts(2, row, TB_WHITE | TB_BOLD, TB_DEFAULT, names[t]);
+    char buf[MAX];
+    snprintf(buf, sizeof(buf), " [%d]", counts[t]);
+    tb_puts(2 + strlen(names[t]), row++, TB_WHITE, TB_DEFAULT, buf);
+    tb_puts(2, row++, TB_WHITE | TB_BOLD, TB_DEFAULT, "|");
+
+    for (int i = 0; i < counts[t]; i++) {
+      if (i == counts[t] - 1)
+        tb_puts(2, row, TB_WHITE | TB_BOLD, TB_DEFAULT, "`-");
+      else
+        tb_puts(2, row, TB_WHITE | TB_BOLD, TB_DEFAULT, "|-");
+      tb_puts(5, row++, TB_WHITE, TB_DEFAULT, topics[t][i]);
+    }
+
     row++;
   }
 
