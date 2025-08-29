@@ -17,6 +17,21 @@
  * cleanup whatever is going on here 
  */
 
+void create(char *name, FILE *fp, char *dirpth) 
+{ 
+	fprintf(fp, "\"%s\"\t0\n", name); 
+	char tdir[MAX]; 
+	snprintf(tdir, sizeof(tdir), "%s/%s", dirpth, name); 
+	
+	if(mkdir(tdir, 0755) != 0) 
+	{
+		if(errno == EEXIST)
+			fprintf(stderr, "Directory already exists\n");
+		else
+			fprintf(stderr, "Directory creation failed\n"); 
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -26,7 +41,7 @@ main(int argc, char *argv[])
         return -1;
   }
   
-  FILE *fp = fopen(argv[1], "r+");
+  FILE *fp = fopen(argv[1], "a+");
 
   if(!fp)
   {
@@ -46,7 +61,7 @@ main(int argc, char *argv[])
 
   while(fgets(line, sizeof(line), fp)) 
   {
-	if(sscanf(line, " \"%[^\"]\"\t%d", name, &n) == 2) 
+	if(sscanf(line, " \"%[^\"]\"\t%d", name, &n) == 2)
 	{
 		for(int i = 1; i <= n; i++)
 		{
@@ -67,10 +82,11 @@ main(int argc, char *argv[])
 				while(fgets(buf, sizeof(buf), efp))
 					printf("%s", buf);
 
+				
 				fclose(efp);
 			}
 		
-			fflush(stdout);
+			create("hihi", fp, dirpth);
 		}
   	}
    }
