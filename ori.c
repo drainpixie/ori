@@ -20,18 +20,28 @@
 #define LEAF "└"       // U+2514
 
 // TODO: make notes scrollable
-// TODO: make all strings in the program dynamic, consider using external library if 2 much work.
+// TODO: make all strings in the program dynamic, consider using external
+// library if 2 much work.
 
 static int utf8_decode(const char *s, uint32_t *rune) {
-    unsigned char c = s[0];
+  unsigned char c = s[0];
 
-    if (c < 0x80) { *rune = c; return 1; }
-    else if ((c & 0xE0) == 0xC0) { *rune = ((c & 0x1F) << 6) | (s[1] & 0x3F); return 2; }
-    else if ((c & 0xF0) == 0xE0) { *rune = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F); return 3; }
-    else if ((c & 0xF8) == 0xF0) { *rune = ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) | ((s[2] & 0x3F) << 6) | (s[3] & 0x3F); return 4; }
-
+  if (c < 0x80) {
+    *rune = c;
     return 1;
+  } else if ((c & 0xE0) == 0xC0) {
+    *rune = ((c & 0x1F) << 6) | (s[1] & 0x3F);
+    return 2;
+  } else if ((c & 0xF0) == 0xE0) {
+    *rune = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
+    return 3;
+  } else if ((c & 0xF8) == 0xF0) {
+    *rune = ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) | ((s[2] & 0x3F) << 6) |
+            (s[3] & 0x3F);
+    return 4;
+  }
 
+  return 1;
 }
 
 void tb_puts(int x, int y, uint16_t fg, uint16_t bg, const char *str) {
@@ -47,20 +57,21 @@ void tb_puts(int x, int y, uint16_t fg, uint16_t bg, const char *str) {
 }
 
 void clean_str(char *str) {
-    if (!str) return;
-    size_t len = strlen(str);
+  if (!str)
+    return;
+  size_t len = strlen(str);
 
-    size_t start = 0;
-    while (start < len && (str[start] == ' ' || str[start] == '\t'))
-        start++;
+  size_t start = 0;
+  while (start < len && (str[start] == ' ' || str[start] == '\t'))
+    start++;
 
-    if (start > 0)
-        memmove(str, str + start, len - start + 1);
+  if (start > 0)
+    memmove(str, str + start, len - start + 1);
 
-    while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' ||
-                       str[len - 1] == ' ' || str[len - 1] == '\t')) {
-        str[--len] = '\0';
-    }
+  while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' ||
+                     str[len - 1] == ' ' || str[len - 1] == '\t')) {
+    str[--len] = '\0';
+  }
 }
 char *read_file(FILE *fp) {
   if (!fp)
