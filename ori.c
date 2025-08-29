@@ -14,8 +14,6 @@
 
 #define MAX 512
 
-#define VERTICAL "│"   // U+2502
-#define HORIZONTAL "─" // U+2500
 #define BRANCH "├"     // U+251C
 #define LEAF "└"       // U+2514
 
