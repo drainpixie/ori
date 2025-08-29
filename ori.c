@@ -62,38 +62,41 @@ char *read_file(FILE *fp) {
 }
 
 int display_topic(char ***topics, int *counts, char **names, int n_topics) {
-  tb_clear();
-  int row = 1;
+    int selected = 0;
+    struct tb_event ev;
 
-  for (int t = 0; t < n_topics; t++) {
-    tb_puts(2, row, TB_WHITE | TB_BOLD, TB_DEFAULT, names[t]);
-    char buf[MAX];
-    snprintf(buf, sizeof(buf), " [%d]", counts[t]);
-    tb_puts(2 + strlen(names[t]), row++, TB_WHITE, TB_DEFAULT, buf);
-    tb_puts(2, row++, TB_WHITE | TB_BOLD, TB_DEFAULT, "|");
+    while (1) {
+        tb_clear();
+        int row = 1;
 
-    for (int i = 0; i < counts[t]; i++) {
-      if (i == counts[t] - 1)
-        tb_puts(2, row, TB_WHITE | TB_BOLD, TB_DEFAULT, "`-");
-      else
-        tb_puts(2, row, TB_WHITE | TB_BOLD, TB_DEFAULT, "|-");
-      tb_puts(5, row++, TB_WHITE, TB_DEFAULT, topics[t][i]);
+        for (int t = 0; t < n_topics; t++) {
+            uint16_t fg = (t == selected) ? TB_BLACK : TB_WHITE | TB_BOLD;
+            uint16_t bg = (t == selected) ? TB_WHITE : TB_DEFAULT;
+            tb_puts(2, row, fg, bg, names[t]);
+
+            char buf[32];
+            snprintf(buf, sizeof(buf), " [%d]", counts[t]);
+            tb_puts(2 + strlen(names[t]), row, TB_CYAN, bg, buf);
+
+            row++;
+        }
+
+        tb_present();
+
+        if (tb_poll_event(&ev) == -1) continue;
+        if (ev.type == TB_EVENT_KEY) {
+            if (ev.key == TB_KEY_ESC || ev.key == TB_KEY_CTRL_C) break;
+            if (ev.key == TB_KEY_ARROW_UP) {
+                if (selected > 0) selected--;
+            } else if (ev.key == TB_KEY_ARROW_DOWN) {
+                if (selected < n_topics - 1) selected++;
+            } else if (ev.key == TB_KEY_ENTER) {
+                return selected;
+            }
+        }
     }
 
-    row++;
-  }
-
-  tb_present();
-
-  struct tb_event ev;
-  while (tb_poll_event(&ev) != -1) {
-    if (ev.type == TB_EVENT_KEY &&
-        (ev.key == TB_KEY_ESC || ev.key == TB_KEY_CTRL_C ||
-         ev.key == TB_KEY_ENTER))
-      break;
-  }
-
-  return 0;
+    return -1;  
 }
 
 int read_entries(const char *topic_name, int entries, const char *dir_path,
