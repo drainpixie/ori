@@ -51,11 +51,6 @@
           alejandra.enable = true;
           convco.enable = true;
 
-          clang-format = {
-            enable = true;
-            types_or = ["c" "c++"];
-          };
-
           statix = {
             enable = true;
             settings.ignore = ["/.direnv"];
