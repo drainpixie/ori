@@ -38,14 +38,7 @@ main(int argc, char *argv[])
   strcpy(filpth, argv[1]);
 
   char *dirpth = dirname(filpth);
-  DIR *dp = opendir(dirpth);
-
-  if(!dp)
-  {
-	  fprintf(stderr, "Can not open directory: %s\n", dirpth);
-	  return -1;
-  }
-
+  
   char name[MAX];
   int n;
 
@@ -84,6 +77,4 @@ main(int argc, char *argv[])
 
   fclose(fp);
   return 0;
-  
-  
 }
