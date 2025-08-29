@@ -16,7 +16,8 @@
 // TODO: make notes fold, unfold with `o`
 // TODO: make notes scrollable
 // TODO: figure out utf-8, we can't use cool tree unicode.
-// TODO: make all strings in the program dynamic, consider using external library if 2 much work.
+// TODO: make all strings in the program dynamic, consider using external
+// library if 2 much work.
 
 void tb_puts(int x, int y, uintattr_t fg, uintattr_t bg, const char *str) {
   for (int i = 0; str[i]; i++)
