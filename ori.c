@@ -1,227 +1,224 @@
 #define TB_IMPL
-
 #include "termbox2.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <errno.h>
-#include <sys/stat.h>
-#include <dirent.h>
 #include <libgen.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 
 #define MAX 512
 
-#define SUCCESS 0
-#define ERROR_ARGS -1
-#define ERROR_FILE -2
-#define ERROR_MKDIR -3
-
-void clean_str(char *str)
-{
-	size_t len;
-	if (!str) return;
-
-	len = strlen(str);
-	while (len > 0 && (str[len-1] == '\n' || str[len-1] == '\r' || str[len-1] == ' ' || str[len-1] == '\t')) {
-		str[--len] = '\0';
-	}
+void tb_puts(int x, int y, uintattr_t fg, uintattr_t bg, const char *str) {
+  for (int i = 0; str[i]; i++)
+    tb_printf(x + i, y, fg, bg, "%c", str[i]);
 }
 
-char *read_file(FILE *fp)
-{
-	size_t capacity = 1024;
-	size_t size = 0;
-	char *content;
-	char *new_content;
-	int c;
+void clean_str(char *str) {
+  if (!str)
+    return;
 
-	if (!fp) return NULL;
-	content = malloc(capacity);
-	if (!content) return NULL;
-
-	while ((c = fgetc(fp)) != EOF) {
-		if (size >= capacity - 1) {
-			capacity *= 2;
-			new_content = realloc(content, capacity);
-
-			if (!new_content) {
-				free(content);
-				return NULL;
-			}
-
-			content = new_content;
-		}
-
-		content[size++] = (char)c;
-	}
-
-	content[size] = '\0';
-	return content;
+  size_t len = strlen(str);
+  while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' ||
+                     str[len - 1] == ' ' || str[len - 1] == '\t')) {
+    str[--len] = '\0';
+  }
 }
 
-int create_topic(const char *name, const char *dir_path) {
-	char topic_dir[PATH_MAX];
-	int ret;
+char *read_file(FILE *fp) {
+  if (!fp)
+    return NULL;
 
-	if (!name || !dir_path) {
-		fprintf(stderr, "error: invalid parameters\n");
-		return ERROR_ARGS;
-	}
+  size_t capacity = 1024, size = 0;
+  char *content = malloc(capacity);
+  if (!content)
+    return NULL;
 
-	ret = snprintf(topic_dir, sizeof(topic_dir), "%s/%s", dir_path, name);
-
-	if (ret >= PATH_MAX) {
-		fprintf(stderr, "error: path too long for topic '%s'\n", name);
-		return ERROR_ARGS;
-	}
-
-	if (mkdir(topic_dir, 0755) != 0) {
-		if (errno == EEXIST) {
-			printf("info: directory '%s' already exists\n", topic_dir);
-			return SUCCESS;
-		} else {
-			perror("error: directory creation failed");
-			return ERROR_MKDIR;
-		}
-	}
-
-	printf("info: created directory: %s\n", topic_dir);
-	return SUCCESS;
+  int c;
+  while ((c = fgetc(fp)) != EOF) {
+    if (size >= capacity - 1) {
+      capacity *= 2;
+      char *tmp = realloc(content, capacity);
+      if (!tmp) {
+        free(content);
+        return NULL;
+      }
+      content = tmp;
+    }
+    content[size++] = (char)c;
+  }
+  content[size] = '\0';
+  return content;
 }
 
-int read_entries(const char *topic_name, int num_entries, const char *dir_path)
-{
-	char entry_path[PATH_MAX];
-	int ret;
-	FILE *entry_fp;
-	char *content;
-	int i;
+int display_topic(char ***topics, int *counts, char **names, int n_topics) {
+  tb_clear();
+  int row = 1;
 
-	if (!topic_name || !dir_path || num_entries < 0) {
-		fprintf(stderr, "error: invalid parameters\n");
-		return ERROR_ARGS;
-	}
+  for (int t = 0; t < n_topics; t++) {
+    tb_puts(2, row++, TB_WHITE | TB_BOLD, TB_DEFAULT, names[t]);
+    row++;
+    for (int i = 0; i < counts[t]; i++)
+      tb_puts(4, row++, TB_CYAN, TB_DEFAULT, topics[t][i]);
+    row++;
+  }
 
-	printf("topic: %s (%d entries)\n", topic_name, num_entries);
+  tb_present();
 
-	for (i = 1; i <= num_entries; i++) {
-		ret = snprintf(entry_path, sizeof(entry_path), "%s/%s/%d.txt", 
-		    dir_path, topic_name, i);
+  struct tb_event ev;
+  while (tb_poll_event(&ev) != -1) {
+    if (ev.type == TB_EVENT_KEY &&
+        (ev.key == TB_KEY_ESC || ev.key == TB_KEY_CTRL_C ||
+         ev.key == TB_KEY_ENTER))
+      break;
+  }
 
-		if (ret >= PATH_MAX) {
-			fprintf(stderr, "error: path too long for entry %d of topic '%s'\n", 
-			    i, topic_name);
-			continue;
-		}
-
-		entry_fp = fopen(entry_path, "r");
-		if (!entry_fp) {
-			fprintf(stderr, "warn: could not open entry %d (%s): %s\n", i, entry_path, strerror(errno));
-			continue;
-		}
-
-		printf("  entry %d (%s):\n", i, entry_path);
-
-
-		content = read_file(entry_fp);
-		if (content) {
-			printf("    %s", content);
-			free(content);
-		} else {
-			fprintf(stderr, "warn: failed to read content from %s\n", entry_path);
-		}
-
-		fclose(entry_fp);
-		printf("\n");
-
-
-		return SUCCESS;
-	}
+  return 0;
 }
 
-int read_index(FILE *fp, const char *dir_path)
-{
-	char line[MAX];
-	char topic_name[MAX];
+int read_entries(const char *topic_name, int entries, const char *dir_path,
+                 char ***out_entries, int *out_count) {
+  if (!topic_name || !dir_path || entries <= 0)
+    return -1;
 
-	int entries;
-	int processed = 0;
+  char entry_path[PATH_MAX];
+  char **all_entries = malloc(entries * sizeof(char *));
+  if (!all_entries)
+    return -1;
 
-	if (!fp || !dir_path) {
-		fprintf(stderr, "error: invalid parameters to process_index_file\n");
-		return ERROR_ARGS;
-	}
+  int count = 0;
 
-	while (fgets(line, sizeof(line), fp)) {
-		clean_str(line);
-		if (strlen(line) == 0) continue;
+  for (int i = 1; i <= entries; i++) {
+    int ret = snprintf(entry_path, sizeof(entry_path), "%s/%s/%d.txt", dir_path,
+                       topic_name, i);
+    if (ret >= PATH_MAX)
+      continue;
 
-		if (sscanf(line, " \"%[^\"]\"\t%d", topic_name, &entries) == 2) {
-			printf("reading topic: %s\n", topic_name);
+    FILE *entry_fp = fopen(entry_path, "r");
+    if (!entry_fp)
+      continue;
 
-			if (entries < 0) {
-				fprintf(stderr, "warn: invalid entry count %d for topic '%s', skipping\n", 
-				    entries, topic_name);
-				continue;
-			}
+    char *content = read_file(entry_fp);
+    fclose(entry_fp);
 
-			if (entries > 0)
-				read_entries(topic_name, entries, dir_path);
+    if (content)
+      all_entries[count++] = content;
+  }
 
-			create_topic(topic_name, dir_path);
+  *out_entries = all_entries;
+  *out_count = count;
 
-			processed++;
-		} else {
-			fprintf(stderr, "warn: could not parse line: '%s'\n", line);
-		}
-	}
-
-	printf("read %d topics\n", processed);
-	return SUCCESS;
+  return 0;
 }
 
-int main(int argc, char *argv[])
-{
-	char file_path[PATH_MAX];
-	char *dir_path;
-	FILE *fp;
-	int ret;
+int read_index(FILE *fp, const char *dir_path, char ***out_topic_names,
+               char ****out_all_entries, int **out_counts, int *out_n_topics) {
+  if (!fp || !dir_path)
+    return -1;
 
-	if (argc < 2) {
-		printf("usage: %s <index_file>\n", argv[0]);
-		printf("  index_file: path to the index file containing topic information\n");
-		return ERROR_ARGS;
-	}
+  char line[MAX], topic_name[MAX];
+  int n_topics = 0, capacity = 8;
 
-	fp = fopen(argv[1], "a+");
-	if (!fp) {
-		fprintf(stderr, "error: cannot open file '%s': %s\n", argv[1], strerror(errno));
-		return ERROR_FILE;
-	}
+  char **topic_names = malloc(capacity * sizeof(char *));
+  char ***all_entries = malloc(capacity * sizeof(char **));
+  int *counts = malloc(capacity * sizeof(int));
 
-	strncpy(file_path, argv[1], sizeof(file_path) - 1);
-	file_path[sizeof(file_path) - 1] = '\0';
+  while (fgets(line, sizeof(line), fp)) {
+    clean_str(line);
+    if (strlen(line) == 0)
+      continue;
 
-	dir_path = dirname(file_path);
-	if (!dir_path) {
-		fprintf(stderr, "error: could not determine directory path\n");
-		fclose(fp);
+    int entries;
+    if (sscanf(line, " \"%[^\"]\"\t%d", topic_name, &entries) == 2 &&
+        entries > 0) {
+      char **topic_entries = NULL;
+      int count = 0;
 
-		return ERROR_ARGS;
-	}
+      if (read_entries(topic_name, entries, dir_path, &topic_entries, &count) ==
+              0 &&
+          count > 0) {
+        if (n_topics >= capacity) {
+          capacity *= 2;
+          topic_names = realloc(topic_names, capacity * sizeof(char *));
+          all_entries = realloc(all_entries, capacity * sizeof(char **));
+          counts = realloc(counts, capacity * sizeof(int));
+        }
 
-	printf("using directory: %s\n", dir_path);
+        topic_names[n_topics] = strdup(topic_name);
+        all_entries[n_topics] = topic_entries;
+        counts[n_topics] = count;
 
-	rewind(fp);
-	ret = read_index(fp, dir_path);
-	fclose(fp);
+        n_topics++;
+      }
+    }
+  }
 
-	if (ret != SUCCESS) {
-		fprintf(stderr, "error: reading failed with code %d\n", ret);
-		return ret;
-	}
+  *out_topic_names = topic_names;
+  *out_all_entries = all_entries;
+  *out_counts = counts;
+  *out_n_topics = n_topics;
 
-	return SUCCESS;
+  return 0;
+}
+
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    fprintf(stderr, "usage: %s <index_file>\n", argv[0]);
+    return -1;
+  }
+
+  FILE *fp = fopen(argv[1], "r");
+  if (!fp) {
+    fprintf(stderr, "error: cannot open file '%s': %s\n", argv[1],
+            strerror(errno));
+    return -1;
+  }
+
+  char file_path[PATH_MAX];
+  strncpy(file_path, argv[1], sizeof(file_path) - 1);
+  file_path[sizeof(file_path) - 1] = '\0';
+
+  char *dir_path = dirname(file_path);
+  if (!dir_path) {
+    fprintf(stderr, "error: could not determine directory path\n");
+    fclose(fp);
+    return -1;
+  }
+
+  if (tb_init() != 0)
+    return -1;
+
+  rewind(fp);
+
+  char **topic_names;
+  char ***all_entries;
+  int *counts;
+  int n_topics;
+
+  int ret =
+      read_index(fp, dir_path, &topic_names, &all_entries, &counts, &n_topics);
+  fclose(fp);
+
+  if (ret != 0) {
+    tb_shutdown();
+    fprintf(stderr, "error: reading failed\n");
+    return ret;
+  }
+
+  display_topic(all_entries, counts, topic_names, n_topics);
+
+  for (int i = 0; i < n_topics; i++) {
+    free(topic_names[i]);
+    for (int j = 0; j < counts[i]; j++)
+      free(all_entries[i][j]);
+    free(all_entries[i]);
+  }
+  free(topic_names);
+  free(all_entries);
+  free(counts);
+
+  tb_shutdown();
+  return 0;
 }
