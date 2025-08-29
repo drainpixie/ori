@@ -131,10 +131,9 @@ void create_topic(const char *topic_name, const char *dir_path, FILE *fp) {
     char tdir[MAX];
     snprintf(tdir, sizeof(tdir), "%s/%s", dir_path, topic_name);
 
-    if (mkdir(tdir, 0755) != 0) {
+    if (mkdir(tdir, 0755) != 0)
         if (errno != EEXIST)
             fprintf(stderr, "Failed to create dir %s\n", tdir);
-    }
 }
 
 int display_topic(Topic **topics_ptr, int *n_topics_ptr, const char *dir_path, const char *index_file_path) {
