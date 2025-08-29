@@ -1,201 +1,108 @@
-# vim: set wrap:
-#! /usr/bin/env sh 
 
-if [ -d mock-data ]; then
-  rm -rf mock-data
-fi
+#!/usr/bin/env sh
 
+[ -d mock-data ] && rm -rf mock-data
 mkdir -p mock-data
-
-NOTE_NAMES="buy_moisturiser weekend_grocery_list book_club_meeting_notes vacation_planning_ideas work_presentation_outline birthday_party_checklist home_improvement_projects recipe_collection exercise_routine learn_new_language garden_maintenance_tasks budget_review car_maintenance_schedule holiday_gift_ideas reading_list daily_journal_entries cooking_experiments movie_watchlist music_playlist_ideas weekend_activities"
-
-DETAIL_CONTENTS="remember to check the ingredients for sensitive skin|compare prices at different stores|look for organic or natural options|check expiration dates before buying|ask pharmacist for recommendations|read customer reviews online|consider bulk purchasing for savings|set reminder for when current supply runs low|research brand reputation and quality|check for any ongoing promotions or discounts|make sure to bring reusable bags|verify store hours before heading out|create a priority list of essential items|check pantry inventory first|consider dietary restrictions and preferences|plan meals for the week ahead|look for seasonal produce deals|don't forget to check the freezer section|bring calculator to stay within budget|consider trying new recipes or ingredients|schedule appointment with specialist|research different treatment options|prepare list of questions for doctor|check insurance coverage details|gather medical history documents|compare different service providers|read warranty information carefully|create maintenance schedule calendar|backup important files first|research compatibility requirements"
 
 random() {
   od -An -N2 -i /dev/urandom | tr -d ' '
 }
 
 absmod() {
-  local num=$1
-  local mod=$2
+  num=$(echo "$1" | sed 's/^-//')
+  echo $(( num % $2 ))
+}
 
-  num=$(echo "$num" | sed 's/^-//')
-  echo $(( num % mod))
+random_note_name() {
+  case $(absmod "$(random)" 20) in
+    0) echo "buy" ;;
+    1) echo "weekend" ;;
+    2) echo "book" ;;
+    3) echo "vacation" ;;
+    4) echo "work" ;;
+    5) echo "birthday" ;;
+    6) echo "home" ;;
+    7) echo "recipe" ;;
+    8) echo "exercise" ;;
+    9) echo "learn" ;;
+    10) echo "garden" ;;
+    11) echo "budget" ;;
+    12) echo "car" ;;
+    13) echo "holiday" ;;
+    14) echo "reading" ;;
+    15) echo "daily" ;;
+    16) echo "cooking" ;;
+    17) echo "movie" ;;
+    18) echo "music" ;;
+    19) echo "weekend" ;;
+  esac
 }
 
 random_detail() {
-    local num=$(random)
-    local idx=$(absmod "$num" 30)
-    
-    case "$idx" in
-        0) echo "remember to check the ingredients for sensitive skin" ;;
-        1) echo "compare prices at different stores" ;;
-        2) echo "look for organic or natural options" ;;
-        3) echo "check expiration dates before buying" ;;
-        4) echo "ask pharmacist for recommendations" ;;
-        5) echo "read customer reviews online" ;;
-        6) echo "consider bulk purchasing for savings" ;;
-        7) echo "set reminder for when current supply runs low" ;;
-        8) echo "research brand reputation and quality" ;;
-        9) echo "check for any ongoing promotions or discounts" ;;
-        10) echo "make sure to bring reusable bags" ;;
-        11) echo "verify store hours before heading out" ;;
-        12) echo "create a priority list of essential items" ;;
-        13) echo "check pantry inventory first" ;;
-        14) echo "consider dietary restrictions and preferences" ;;
-        15) echo "plan meals for the week ahead" ;;
-        16) echo "look for seasonal produce deals" ;;
-        17) echo "don't forget to check the freezer section" ;;
-        18) echo "bring calculator to stay within budget" ;;
-        19) echo "consider trying new recipes or ingredients" ;;
-        20) echo "schedule appointment with specialist" ;;
-        21) echo "research different treatment options" ;;
-        22) echo "prepare list of questions for doctor" ;;
-        23) echo "check insurance coverage details" ;;
-        24) echo "gather medical history documents" ;;
-        25) echo "compare different service providers" ;;
-        26) echo "read warranty information carefully" ;;
-        27) echo "create maintenance schedule calendar" ;;
-        28) echo "backup important files first" ;;
-        29) echo "research compatibility requirements" ;;
-        *) echo "remember to double check this important item" ;;
-    esac
-}
-
-random_context() {
-    local name="$1"
-    local details="$2"
-    local num=$(random)
-    local choice=$(absmod "$num" 5)
-    
-    case "$name" in
-        *grocery*|*shopping*)
-            case "$choice" in
-                0) echo "item ${details}: milk and eggs" ;;
-                1) echo "item ${details}: fresh vegetables and fruits" ;;
-                2) echo "item ${details}: bread and butter" ;;
-                3) echo "item ${details}: cleaning supplies" ;;
-                4) echo "item ${details}: healthy snacks" ;;
-            esac
-            ;;
-        *meeting*|*work*|*presentation*)
-            case "$choice" in
-                0) echo "point ${details}: review quarterly goals and metrics" ;;
-                1) echo "point ${details}: discuss team assignments" ;;
-                2) echo "point ${details}: budget allocation review" ;;
-                3) echo "point ${details}: client feedback session" ;;
-                4) echo "point ${details}: project timeline update" ;;
-            esac
-            ;;
-        *vacation*|*travel*|*planning*)
-            case "$choice" in
-                0) echo "task ${details}: book flight tickets early" ;;
-                1) echo "task ${details}: reserve hotel accommodation" ;;
-                2) echo "task ${details}: pack weather appropriate clothes" ;;
-                3) echo "task ${details}: research local attractions" ;;
-                4) echo "task ${details}: arrange pet care services" ;;
-            esac
-            ;;
-        *party*|*birthday*|*celebration*)
-            case "$choice" in
-                0) echo "item ${details}: send invitations to guests" ;;
-                1) echo "item ${details}: order birthday cake" ;;
-                2) echo "item ${details}: decorate venue space" ;;
-                3) echo "item ${details}: prepare party games" ;;
-                4) echo "item ${details}: buy party supplies" ;;
-            esac
-            ;;
-        *)
-            random_detail
-            ;;
-    esac
-}
-
-nth_word() {
-    local words="$1"
-    local n="$2"
-    local counter=1
-    
-    for word in $words; do
-        if [ "$counter" -eq "$n" ]; then
-            echo "$word"
-            return
-        fi
-        counter=$(( counter + 1 ))
-    done
-}
-
-count_words() {
-    set -- $1
-    echo $#
+  case $(absmod "$(random)" 20) in
+    0) echo "remember to check the ingredients for sensitive skin" ;;
+    1) echo "compare prices at different stores" ;;
+    2) echo "look for organic or natural options" ;;
+    3) echo "check expiration dates before buying" ;;
+    4) echo "ask pharmacist for recommendations" ;;
+    5) echo "read customer reviews online" ;;
+    6) echo "consider bulk purchasing for savings" ;;
+    7) echo "set reminder for when current supply runs low" ;;
+    8) echo "research brand reputation and quality" ;;
+    9) echo "check for any ongoing promotions or discounts" ;;
+    10) echo "make sure to bring reusable bags" ;;
+    11) echo "verify store hours before heading out" ;;
+    12) echo "create a priority list of essential items" ;;
+    13) echo "check pantry inventory first" ;;
+    14) echo "consider dietary restrictions and preferences" ;;
+    15) echo "plan meals for the week ahead" ;;
+    16) echo "look for seasonal produce deals" ;;
+    17) echo "don't forget to check the freezer section" ;;
+    18) echo "bring calculator to stay within budget" ;;
+    19) echo "consider trying new recipes or ingredients" ;;
+    *) echo "remember to double check this important item" ;;
+  esac
 }
 
 select_random_notes() {
-    local all="$1"
-    local select="$2"
-    local total=$(count_words "$all")
-    local selected=""
-    local indices=""
-    local count=0
-    
-    while [ "$count" -lt "$select" ] && [ "$count" -lt "$total" ]; do
-        local num=$(random)
-        local index=$(absmod "$num" "$total")
-        index=$(( index + 1 )) 
-        
-        local already_used=0
+  selected=""
+  count=0
 
-        for used in $indices; do
-            if [ "$used" -eq "$index" ]; then
-                already_used=1
-                break
-            fi
-        done
-        
-        if [ "$already_used" -eq 0 ]; then
-            local note=$(nth_word "$all" "$index")
+  while [ "$count" -lt "$1" ] && [ "$count" -lt 20 ]; do
+    note=$(random_note_name)
+    skip=0
 
-            note=$(echo "$note" | tr '_' ' ')
-            selected="$selected $note"
-            indices="$indices $index"
-
-            count=$(( count + 1 ))
-        fi
+    for n in $selected; do
+      [ "$n" = "$note" ] && skip=1
     done
-    
-    echo "$selected"
+
+    [ $skip -eq 0 ] && selected="$selected $note" && count=$((count+1))
+  done
+
+  echo "$selected"
 }
 
 index_file="mock-data/index"
 : > "$index_file"
 
-num=$(random)
-num_notes=$(( $(absmod "$num" 8) + 8 ))
-selected_notes=$(select_random_notes "$NOTE_NAMES" "$num_notes")
+num_notes=$(( $(absmod "$(random)" 8) + 8 ))
+notes=$(select_random_notes "$num_notes")
 
-for note_name in $selected_notes; do
-    num=$(random)
-    num_details=$(( $(absmod "$num" 6) + 1 ))
-    
-    echo "creating note '$note_name' with $num_details details"
-    printf "%s\t%d\n" "\"$note_name\"" "$num_details" >> "$index_file"
-    
-    note_dir="mock-data/$note_name"
-    mkdir -p "$note_dir"
-    
-    i=1
-    while [ "$i" -le "$num_details" ]; do
-        detail_file="$note_dir/$i.txt"
-        num=$(random)
+for note in $notes; do
+  num_details=$(( $(absmod "$(random)" 6) + 1 ))
 
-        if [ $(absmod "$num" 2) -eq 0 ]; then
-            random_context "$note_name" "$i" > "$detail_file"
-        else
-            random_detail > "$detail_file"
-        fi
+  echo "creating note '$note' with $num_details details"
+  printf "%s\t%d\n" "\"$note\"" "$num_details" >> "$index_file"
 
-        i=$(( i + 1 ))
-    done
+  note_dir="mock-data/$note"
+  mkdir -p "$note_dir"
+
+  i=1
+
+  while [ "$i" -le "$num_details" ]; do
+    random_detail > "$note_dir/$i.txt"
+    i=$((i+1))
+  done
 done
 
 echo ""
@@ -206,4 +113,3 @@ echo "- total: $num_notes"
 echo ""
 echo "sample:"
 head -n 3 "$index_file"
-echo ""
