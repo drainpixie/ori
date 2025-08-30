@@ -1,13 +1,10 @@
 // vim: set wrap:
-
-#define TB_IMPL
-#include "termbox2.h"
+#define _GNU_SOURCE
 
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
 #include <locale.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>

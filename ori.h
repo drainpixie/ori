@@ -1,10 +1,15 @@
 #ifndef ORI_H
 #define ORI_H
 
+#define TB_IMPL
 #define MAX 512
 
 #define BRANCH "├" // U+251C
 #define LEAF "└"   // U+2514
+
+#include "termbox2.h"
+#include <stdint.h>
+#include <stdio.h>
 
 typedef struct {
   char *name;
