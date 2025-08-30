@@ -30,8 +30,7 @@
         version = "1.0.0";
 
         src = ./.;
-
-        nativeBuildInputs = [pkgs.gcc pkgs.gnumake];
+        nativeBuildInputs = builtins.attrValues {inherit (pkgs) gcc gnumake;};
 
         installPhase = ''
           runHook preInstall
@@ -66,13 +65,9 @@
       default = pkgs.mkShell {
         buildInputs =
           check.enabledPackages
-          ++ [
-            pkgs.gcc
-            pkgs.gdb
-            pkgs.gnumake
-            pkgs.valgrind
-            pkgs.clang-tools
-          ];
+          ++ builtins.attrValues {
+            inherit (pkgs) gcc gdb gnumake valgrind clang-tools bear;
+          };
 
         shellHook =
           check.shellHook

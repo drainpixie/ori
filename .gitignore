@@ -1,6 +1,11 @@
 ori
 mock-data/
 
+# Bear / Clangd
+compile_commands.json
+.cache/
+
+
 # Prerequisites
 *.d
 
