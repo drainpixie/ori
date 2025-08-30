@@ -3,24 +3,29 @@
 
 #define MAX 512
 
-#define BRANCH "├"     // U+251C
-#define LEAF "└"       // U+2514
+#define BRANCH "├" // U+251C
+#define LEAF "└"   // U+2514
 
 typedef struct {
-	char *name;
-	char **entries;
-	int count;
+  char *name;
+  char **entries;
+  int count;
 } Topic;
 
 static int utf8_decode(const char *s, uint32_t *rune);
 static void tb_puts(int x, int y, uint16_t fg, uint16_t bg, const char *str);
 static void clean_str(char *str);
 static char *read_file(FILE *fp);
-static int display_topic(Topic **topics_ptr, int *n_topics_ptr, const char *dir_path, const char *index_file_path);
-static void create_topic(const char *topic_name, const char *dir_path, FILE *fp);
+static int display_topic(Topic **topics_ptr, int *n_topics_ptr,
+                         const char *dir_path, const char *index_file_path);
+static void create_topic(const char *topic_name, const char *dir_path,
+                         FILE *fp);
 static void get_input(const char *prompt, char *buffer, int bufsize);
-static int read_entries(const char *topic_name, int entries, const char *dir_path, char ***out_entries, int *out_count);
-static int read_index(FILE *fp, const char *dir_path, Topic **out_topics, int *out_n_topics);
+static int read_entries(const char *topic_name, int entries,
+                        const char *dir_path, char ***out_entries,
+                        int *out_count);
+static int read_index(FILE *fp, const char *dir_path, Topic **out_topics,
+                      int *out_n_topics);
 
 static int utf8_decode(const char *s, uint32_t *rune) {
   unsigned char c = s[0];
@@ -56,18 +61,21 @@ static void tb_puts(int x, int y, uint16_t fg, uint16_t bg, const char *str) {
 }
 
 static void clean_str(char *str) {
-    if (!str) return;
+  if (!str)
+    return;
 
-    char *start = str;
-    while (*start == ' ' || *start == '\t') start++;
+  char *start = str;
+  while (*start == ' ' || *start == '\t')
+    start++;
 
-    if (start != str)
-        memmove(str, start, strlen(start) + 1);
+  if (start != str)
+    memmove(str, start, strlen(start) + 1);
 
-    char *end = str + strlen(str) - 1;
-    while (end >= str && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) {
-        *end-- = '\0';
-    }
+  char *end = str + strlen(str) - 1;
+  while (end >= str &&
+         (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) {
+    *end-- = '\0';
+  }
 }
 
 static char *read_file(FILE *fp) {
@@ -97,35 +105,36 @@ static char *read_file(FILE *fp) {
 }
 
 static void get_input(const char *prompt, char *buffer, int bufsize) {
-    int pos = 0;
-    struct tb_event ev;
+  int pos = 0;
+  struct tb_event ev;
+
+  tb_clear();
+  tb_puts(0, tb_height() - 1, TB_WHITE, TB_DEFAULT, prompt);
+  tb_present();
+
+  while (1) {
+    if (tb_poll_event(&ev) == -1)
+      continue;
+
+    if (ev.type == TB_EVENT_KEY) {
+      if (ev.key == TB_KEY_ENTER) {
+        buffer[pos] = '\0';
+        break;
+      } else if (ev.key == TB_KEY_BACKSPACE || ev.key == TB_KEY_BACKSPACE2) {
+        if (pos > 0) {
+          pos--;
+          buffer[pos] = '\0';
+        }
+      } else if (ev.ch && pos < bufsize - 1) {
+        buffer[pos++] = (char)ev.ch;
+      }
+    }
 
     tb_clear();
     tb_puts(0, tb_height() - 1, TB_WHITE, TB_DEFAULT, prompt);
+    tb_puts(strlen(prompt), tb_height() - 1, TB_WHITE, TB_DEFAULT, buffer);
     tb_present();
-
-    while (1) {
-        if (tb_poll_event(&ev) == -1) continue;
-
-        if (ev.type == TB_EVENT_KEY) {
-            if (ev.key == TB_KEY_ENTER) {
-                buffer[pos] = '\0';
-                break;
-            } else if (ev.key == TB_KEY_BACKSPACE || ev.key == TB_KEY_BACKSPACE2) {
-                if (pos > 0) {
-					pos--;
-					buffer[pos] = '\0';
-				}
-            } else if (ev.ch && pos < bufsize - 1) {
-                buffer[pos++] = (char)ev.ch;
-            }
-        }
-
-        tb_clear();
-        tb_puts(0, tb_height() - 1, TB_WHITE, TB_DEFAULT, prompt);
-        tb_puts(strlen(prompt), tb_height() - 1, TB_WHITE, TB_DEFAULT, buffer);
-        tb_present();
-    }
+  }
 }
 
 #endif

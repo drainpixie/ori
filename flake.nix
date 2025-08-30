@@ -9,7 +9,7 @@
     hooks,
     self,
     ...
-  } @ inputs: let
+  }: let
     inherit (nixpkgs) lib;
 
     systems = [

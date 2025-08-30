@@ -17,121 +17,130 @@
 // TODO: make notes scrollable
 // TODO: make all strings in the program dynamic, consider using external
 // library if 2 much work.
-// TODO: maybe comment stuff a bit or clean up somehow, im getting bit lost in certain parts
+// TODO: maybe comment stuff a bit or clean up somehow, im getting bit lost in
+// certain parts
 // TODO: add creation of entries, add deletion of topics and entries
 
-static void create_topic(const char *topic_name, const char *dir_path, FILE *fp) {
-    fprintf(fp, "\"%s\"\t0\n", topic_name);
-    fflush(fp);
+static void create_topic(const char *topic_name, const char *dir_path,
+                         FILE *fp) {
+  fprintf(fp, "\"%s\"\t0\n", topic_name);
+  fflush(fp);
 
-    char tdir[MAX];
-    snprintf(tdir, sizeof(tdir), "%s/%s", dir_path, topic_name);
+  char tdir[MAX];
+  snprintf(tdir, sizeof(tdir), "%s/%s", dir_path, topic_name);
 
-    if (mkdir(tdir, 0755) != 0)
-        if (errno != EEXIST)
-            fprintf(stderr, "Failed to create dir %s\n", tdir);
+  if (mkdir(tdir, 0755) != 0)
+    if (errno != EEXIST)
+      fprintf(stderr, "Failed to create dir %s\n", tdir);
 }
 
-static int display_topic(Topic **topics_ptr, int *n_topics_ptr, const char *dir_path, const char *index_file_path) {
-    int selected = 0;
-    int n_topics = *n_topics_ptr;
-    Topic *topics = *topics_ptr;
+static int display_topic(Topic **topics_ptr, int *n_topics_ptr,
+                         const char *dir_path, const char *index_file_path) {
+  int selected = 0;
+  int n_topics = *n_topics_ptr;
+  Topic *topics = *topics_ptr;
 
-    int *folded = calloc(n_topics, sizeof(int));
-    if (!folded) return -1;
-    memset(folded, 1, n_topics * sizeof(int));
+  int *folded = calloc(n_topics, sizeof(int));
+  if (!folded)
+    return -1;
+  memset(folded, 1, n_topics * sizeof(int));
 
-    struct tb_event ev;
+  struct tb_event ev;
 
-    FILE *index_fp = fopen(index_file_path, "a+");
-    if (!index_fp) {
-        tb_shutdown();
-        fprintf(stderr, "Cannot open index file\n");
-        free(folded);
-        return -1;
-    }
-
-    while (1) {
-        tb_clear();
-        int row = 1, indent = 2;
-
-        for (int t = 0; t < n_topics; t++) {
-            uint16_t fg = (t == selected) ? TB_BLACK : TB_WHITE;
-            uint16_t bg = (t == selected) ? TB_WHITE : TB_DEFAULT;
-
-            tb_puts(indent, row, fg | TB_BOLD, bg, topics[t].name);
-
-            char buf[MAX];
-            snprintf(buf, sizeof(buf), " %d", topics[t].count);
-            tb_puts(indent + strlen(topics[t].name), row, fg, bg, buf);
-
-            row++;
-
-            if (!folded[t]) {
-                for (int i = 0; i < topics[t].count; i++) {
-                    const char *prefix = (i == topics[t].count - 1) ? LEAF : BRANCH;
-                    clean_str(topics[t].entries[i]);
-                    tb_puts(indent, row, TB_WHITE | TB_BOLD, TB_DEFAULT, prefix);
-                    tb_puts(indent + 2, row++, TB_WHITE, TB_DEFAULT, topics[t].entries[i]);
-                }
-            }
-        }
-
-        tb_present();
-
-        if (tb_poll_event(&ev) == -1) continue;
-
-        if (ev.type == TB_EVENT_KEY) {
-            if (ev.key == TB_KEY_ESC || ev.ch == 'q' || ev.key == TB_KEY_CTRL_C)
-                break;
-            else if (ev.key == TB_KEY_ARROW_UP || ev.ch == 'k') {
-                if (selected > 0) selected--;
-            } else if (ev.key == TB_KEY_ARROW_DOWN || ev.ch == 'j') {
-                if (selected < n_topics - 1) selected++;
-            } else if (ev.key == TB_KEY_ENTER || ev.ch == ' ' || ev.ch == 'o') {
-                folded[selected] = !folded[selected];
-            } else if (ev.ch == 'c') {
-                // move this to a function                
-                char new_topic[MAX] = {0};
-                get_input("New topic: ", new_topic, sizeof(new_topic));
-
-                if (strlen(new_topic) > 0) {
-                    create_topic(new_topic, dir_path, index_fp);
-
-                    for (int i = 0; i < n_topics; i++) {
-                        free(topics[i].name);
-                        
-                        for (int j = 0; j < topics[i].count; j++)
-                            free(topics[i].entries[j]);
-                        
-                        free(topics[i].entries);
-                    }
-                    free(topics);
-                    free(folded);
-
-                    rewind(index_fp);
-                    read_index(index_fp, dir_path, &topics, &n_topics);
-                    folded = calloc(n_topics, sizeof(int));
-                    memset(folded, 1, n_topics * sizeof(int));
-                    selected = 0;
-                }
-            }
-        }
-    }
-
-    fclose(index_fp);
+  FILE *index_fp = fopen(index_file_path, "a+");
+  if (!index_fp) {
+    tb_shutdown();
+    fprintf(stderr, "Cannot open index file\n");
     free(folded);
-    *topics_ptr = topics;
-    *n_topics_ptr = n_topics;
+    return -1;
+  }
 
-    return 0;
+  while (1) {
+    tb_clear();
+    int row = 1, indent = 2;
+
+    for (int t = 0; t < n_topics; t++) {
+      uint16_t fg = (t == selected) ? TB_BLACK : TB_WHITE;
+      uint16_t bg = (t == selected) ? TB_WHITE : TB_DEFAULT;
+
+      tb_puts(indent, row, fg | TB_BOLD, bg, topics[t].name);
+
+      char buf[MAX];
+      snprintf(buf, sizeof(buf), " %d", topics[t].count);
+      tb_puts(indent + strlen(topics[t].name), row, fg, bg, buf);
+
+      row++;
+
+      if (!folded[t]) {
+        for (int i = 0; i < topics[t].count; i++) {
+          const char *prefix = (i == topics[t].count - 1) ? LEAF : BRANCH;
+          clean_str(topics[t].entries[i]);
+          tb_puts(indent, row, TB_WHITE | TB_BOLD, TB_DEFAULT, prefix);
+          tb_puts(indent + 2, row++, TB_WHITE, TB_DEFAULT,
+                  topics[t].entries[i]);
+        }
+      }
+    }
+
+    tb_present();
+
+    if (tb_poll_event(&ev) == -1)
+      continue;
+
+    if (ev.type == TB_EVENT_KEY) {
+      if (ev.key == TB_KEY_ESC || ev.ch == 'q' || ev.key == TB_KEY_CTRL_C)
+        break;
+      else if (ev.key == TB_KEY_ARROW_UP || ev.ch == 'k') {
+        if (selected > 0)
+          selected--;
+      } else if (ev.key == TB_KEY_ARROW_DOWN || ev.ch == 'j') {
+        if (selected < n_topics - 1)
+          selected++;
+      } else if (ev.key == TB_KEY_ENTER || ev.ch == ' ' || ev.ch == 'o') {
+        folded[selected] = !folded[selected];
+      } else if (ev.ch == 'c') {
+        // move this to a function
+        char new_topic[MAX] = {0};
+        get_input("New topic: ", new_topic, sizeof(new_topic));
+
+        if (strlen(new_topic) > 0) {
+          create_topic(new_topic, dir_path, index_fp);
+
+          for (int i = 0; i < n_topics; i++) {
+            free(topics[i].name);
+
+            for (int j = 0; j < topics[i].count; j++)
+              free(topics[i].entries[j]);
+
+            free(topics[i].entries);
+          }
+          free(topics);
+          free(folded);
+
+          rewind(index_fp);
+          read_index(index_fp, dir_path, &topics, &n_topics);
+          folded = calloc(n_topics, sizeof(int));
+          memset(folded, 1, n_topics * sizeof(int));
+          selected = 0;
+        }
+      }
+    }
+  }
+
+  fclose(index_fp);
+  free(folded);
+  *topics_ptr = topics;
+  *n_topics_ptr = n_topics;
+
+  return 0;
 }
 
-static int read_entries(const char *topic_name, int entries, const char *dir_path,
-                 char ***out_entries, int *out_count) {
+static int read_entries(const char *topic_name, int entries,
+                        const char *dir_path, char ***out_entries,
+                        int *out_count) {
   if (!topic_name || !dir_path || entries < 0)
     return -1;
-  
+
   if (entries == 0) {
     *out_entries = NULL;
     *out_count = 0;
@@ -168,7 +177,8 @@ static int read_entries(const char *topic_name, int entries, const char *dir_pat
   return 0;
 }
 
-static int read_index(FILE *fp, const char *dir_path, Topic **out_topics, int *out_n_topics) {
+static int read_index(FILE *fp, const char *dir_path, Topic **out_topics,
+                      int *out_n_topics) {
   if (!fp || !dir_path)
     return -1;
 
@@ -178,33 +188,32 @@ static int read_index(FILE *fp, const char *dir_path, Topic **out_topics, int *o
   Topic *topics = malloc(capacity * sizeof(Topic));
 
   if (!topics)
-	  return -1;
+    return -1;
 
   while (fgets(line, sizeof(line), fp)) {
     clean_str(line);
     if (strlen(line) == 0)
-        continue;
+      continue;
 
     int entries;
     if (sscanf(line, " \"%[^\"]\"\t%d", topic_name, &entries) == 2) {
-        char **topic_entries = NULL;
-        int count = 0;
+      char **topic_entries = NULL;
+      int count = 0;
 
-        read_entries(topic_name, entries, dir_path, &topic_entries, &count);
+      read_entries(topic_name, entries, dir_path, &topic_entries, &count);
 
-        if (n_topics >= capacity) {
-            capacity *= 2;
-            topics = realloc(topics, capacity * sizeof(Topic));
-        }
+      if (n_topics >= capacity) {
+        capacity *= 2;
+        topics = realloc(topics, capacity * sizeof(Topic));
+      }
 
-        topics[n_topics].name = strdup(topic_name);
-        topics[n_topics].entries = topic_entries;
-        topics[n_topics].count = count;
-        n_topics++;
+      topics[n_topics].name = strdup(topic_name);
+      topics[n_topics].entries = topic_entries;
+      topics[n_topics].count = count;
+      n_topics++;
     }
-}
+  }
 
- 
   *out_topics = topics;
   *out_n_topics = n_topics;
 
@@ -259,11 +268,10 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < n_topics; i++) {
     free(topics[i].name);
     for (int j = 0; j < topics[i].count; j++)
-        free(topics[i].entries[j]);
+      free(topics[i].entries[j]);
     free(topics[i].entries);
   }
   free(topics);
 
   tb_shutdown();
 }
-
