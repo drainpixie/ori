@@ -17,15 +17,32 @@ typedef struct {
   int count;
 } Topic;
 
+typedef enum {
+    INDEX_INCREMENT, 
+    INDEX_DECREMENT, 
+    INDEX_DELETE_LINE 
+} index_action_t;
+
 static int utf8_decode(const char *s, uint32_t *rune);
 static void tb_puts(int x, int y, uint16_t fg, uint16_t bg, const char *str);
 static void clean_str(char *str);
 static char *read_file(FILE *fp);
+
+static int index_manage(char *topic_name, const char *index_path, 
+                       index_action_t action);
+
+static void create_topic(char *topic_name, const char *dir_path,
+                         FILE *fp);
+static void delete_topic(char *topic_name, const char *dir_path, 
+                          const char *index_path);
+
+static void create_entry(char *topic_name, const char *dir_path,
+                        const char *index_path);
+
+static void get_input(const char *prompt, char *buffer, int bufsize);
 static int display_topic(Topic **topics_ptr, int *n_topics_ptr,
                          const char *dir_path, const char *index_file_path);
-static void create_topic(const char *topic_name, const char *dir_path,
-                         FILE *fp);
-static void get_input(const char *prompt, char *buffer, int bufsize);
+
 static int read_entries(const char *topic_name, int entries,
                         const char *dir_path, char ***out_entries,
                         int *out_count);
@@ -140,6 +157,14 @@ static void get_input(const char *prompt, char *buffer, int bufsize) {
     tb_puts(strlen(prompt), tb_height() - 1, TB_WHITE, TB_DEFAULT, buffer);
     tb_present();
   }
+}
+
+static int unlink_cb(const char *fpath, const struct stat *sb,
+                     int typeflag, struct FTW *ftwbuf) {
+    (void)sb;      
+    (void)typeflag; 
+    (void)ftwbuf;   
+    return remove(fpath);
 }
 
 #endif

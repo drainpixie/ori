@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <ftw.h>
 
 #include "ori.h"
 
@@ -16,19 +17,109 @@
 // library if 2 much work.
 // TODO: maybe comment stuff a bit or clean up somehow, im getting bit lost in
 // certain parts
-// TODO: add creation of entries, add deletion of topics and entries
+// TODO: Run editor when creating an entry or maybe even try to create a simple one
+// TODO: add keybindings to use create/delete functions!!!!
+// TODO: add a deletion of entries.
 
-static void create_topic(const char *topic_name, const char *dir_path,
+static int index_manage(char *topic_name, const char *index_path, 
+                       index_action_t action) {
+    FILE *fp = fopen(index_path, "r");
+    if (!fp) {
+        fprintf(stderr, "Cannot open index file %s\n", index_path);
+        return -1;
+    }    
+
+    char tmp_path[MAX];
+    
+    // dirname apparently modifies its argument, so we copy
+    char index_copy[MAX];
+    strncpy(index_copy, index_path, sizeof(index_copy));
+    index_copy[sizeof(index_copy) - 1] = '\0';
+    
+    int count = -1;
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s/.tmpindex", dirname(index_copy));
+    
+    FILE *efp = fopen(tmp_path, "w");
+    if(!efp) {
+        fprintf(stderr, "Cannot open temp file\n");
+        fclose(fp);
+        return -1;
+    }
+    
+    char buf[MAX];
+    while (fgets(buf, sizeof(buf), fp)) {
+        if (strstr(buf, topic_name)) {
+            if (action == INDEX_DELETE_LINE) {
+                continue;  
+            }
+            char parsed[MAX];
+            int n;
+            if (sscanf(buf, " \"%[^\"]\"\t%d", parsed, &n) == 2 &&
+                strcmp(parsed, topic_name) == 0) {
+                    count = (action == INDEX_INCREMENT) ? n + 1 : n - 1;
+                    char nbuf[MAX];
+                    snprintf(nbuf, sizeof(nbuf), "\"%s\"\t%d\n", topic_name, count);
+                    fputs(nbuf, efp);
+                    continue; 
+            }
+        }
+        fputs(buf, efp);
+    } 
+
+    fclose(fp);
+    fclose(efp);
+    
+    if (rename(tmp_path, index_path)) {
+        fprintf(stderr, "Canot rename file\n");
+        return -1;
+    }
+    
+    return count;
+}
+
+static void create_topic(char *topic_name, const char *index_path,
                          FILE *fp) {
   fprintf(fp, "\"%s\"\t0\n", topic_name);
   fflush(fp);
 
   char tdir[MAX];
-  snprintf(tdir, sizeof(tdir), "%s/%s", dir_path, topic_name);
+  snprintf(tdir, sizeof(tdir), "%s/%s", index_path, topic_name);
 
   if (mkdir(tdir, 0755) != 0)
     if (errno != EEXIST)
       fprintf(stderr, "Failed to create dir %s\n", tdir);
+}
+
+static void delete_topic(char *topic_name, const char *dir_path, 
+                          const char *index_path) {
+  char tdir[MAX];
+  snprintf(tdir, sizeof(tdir), "%s/%s", dir_path, topic_name);
+
+  nftw(tdir, unlink_cb, 65, FTW_DEPTH | FTW_PHYS);
+  index_manage(topic_name, index_path, INDEX_DELETE_LINE);
+}
+
+static void create_entry(char *topic_name, const char *dir_path,
+                        const char *index_path) {
+    int count = index_manage(topic_name, index_path, INDEX_INCREMENT);
+    
+    if (count <= 0) {
+        fprintf(stderr, "Failed to update index\n");
+        return;
+    }
+    
+    char buf[MAX];
+    snprintf(buf, sizeof(buf), "%s/%s/%d.txt", dir_path, topic_name, count);
+    
+    FILE *efp = fopen(buf, "w");
+    if (!efp) {
+        fprintf(stderr, "Cannot create entry file");
+        return;
+    }
+    
+    // $EDITOR here
+    fclose(efp);
 }
 
 static int display_topic(Topic **topics_ptr, int *n_topics_ptr,
@@ -96,7 +187,7 @@ static int display_topic(Topic **topics_ptr, int *n_topics_ptr,
       } else if (ev.key == TB_KEY_ENTER || ev.ch == ' ' || ev.ch == 'o') {
         folded[selected] = !folded[selected];
       } else if (ev.ch == 'c') {
-        // move this to a function
+        // TODO: move this to a function?
         char new_topic[MAX] = {0};
         get_input("New topic: ", new_topic, sizeof(new_topic));
 
@@ -216,6 +307,31 @@ static int read_index(FILE *fp, const char *dir_path, Topic **out_topics,
 
   return 0;
 }
+
+/*
+
+//test("./mock-data", "./mock-data/index");
+//leaving this here since we don't have these binded to ui
+
+void test(const char *dir_path, const char *index_path) {
+    FILE *index_fp = fopen(index_path, "a+");
+    
+    printf("creating topic\n");
+    create_topic("testtopic", dir_path, index_fp);
+    
+    printf("creating entry 1\n");
+    create_entry("testtopic", dir_path, index_path);
+    
+    printf("creating entry 2\n");
+    create_entry("testtopic", dir_path, index_path);
+    
+    printf("deleting topic\n");
+    delete_topic("testtopic", dir_path, index_path);
+    
+    fclose(index_fp);
+    printf("Done.\n");
+}
+*/
 
 int main(int argc, char *argv[]) {
   setlocale(LC_ALL, "C.UTF-8");
