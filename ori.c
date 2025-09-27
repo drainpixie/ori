@@ -78,13 +78,13 @@ static int index_manage(char *topic_name, const char *index_path,
     return count;
 }
 
-static void create_topic(char *topic_name, const char *index_path,
+static void create_topic(char *topic_name, const char *dir_path,
                          FILE *fp) {
   fprintf(fp, "\"%s\"\t0\n", topic_name);
   fflush(fp);
 
   char tdir[MAX];
-  snprintf(tdir, sizeof(tdir), "%s/%s", index_path, topic_name);
+  snprintf(tdir, sizeof(tdir), "%s/%s", dir_path, topic_name);
 
   if (mkdir(tdir, 0755) != 0)
     if (errno != EEXIST)
