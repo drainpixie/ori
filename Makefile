@@ -1,4 +1,4 @@
-CFLAGS += -std=c99 -Wall -Wextra -Werror -Wold-style-declaration -Wno-maybe-uninitialized -Wno-unused-result -O3 -pedantic
+CFLAGS += -std=c99 -Wall -Wextra -g -Wold-style-declaration -Wno-maybe-uninitialized -Wno-unused-result -O3 -pedantic
 PREFIX  ?= /usr
 BINDIR  ?= $(PREFIX)/bin
 MANDIR  ?= $(PREFIX)/share/man
@@ -18,7 +18,7 @@ uninstall:
 	rm -f $(DESTDIR)$(MANDIR)/man1/ori.1
 
 clean:
-	rm -f ori *.o 
+	rm -fr ori mock-data *.o 
 
 .PHONY: all install uninstall clean
 
